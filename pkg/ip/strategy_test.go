@@ -78,6 +78,7 @@ func TestExcludedIPsStrategy_GetIP(t *testing.T) {
 	testCases := []struct {
 		desc          string
 		excludedIPs   []string
+		remoteAddr    string
 		xForwardedFor string
 		expected      string
 	}{
@@ -92,6 +93,12 @@ func TestExcludedIPsStrategy_GetIP(t *testing.T) {
 			excludedIPs:   []string{"10.0.0.2", "10.0.0.1"},
 			xForwardedFor: "10.0.0.4,10.0.0.3,10.0.0.2,10.0.0.1",
 			expected:      "10.0.0.3",
+		},
+		{
+			desc:          "Use excluded IPs, but X-Forwarded-For is not present",
+			excludedIPs:   []string{"10.0.0.2", "10.0.0.1"},
+			remoteAddr:    "10.2.3.1:123",
+			expected:      "10.2.3.1",
 		},
 		{
 			desc:          "Use excluded IPs CIDR",
@@ -117,7 +124,9 @@ func TestExcludedIPsStrategy_GetIP(t *testing.T) {
 
 			strategy := CheckerStrategy{Checker: checker}
 			req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1", nil)
-			req.Header.Set(xForwardedFor, test.xForwardedFor)
+			if test.xForwardedFor != "" {
+				req.Header.Set(xForwardedFor, test.xForwardedFor)
+			}
 			actual := strategy.GetIP(req)
 			assert.Equal(t, test.expected, actual)
 		})
